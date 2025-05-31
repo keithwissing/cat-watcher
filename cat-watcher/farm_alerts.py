@@ -70,12 +70,15 @@ async def mqtt_listener(photo_queue, config):
     memory = {}
     max_reconnect_attempts = 5
     reconnect_attempts = 0
+    base_interval = 5  # Starting interval in seconds
 
     logging.info(f'Connecting to {broker}:{port}')
-    mqtt_client = aiomqtt.Client(broker, username=username, password=password)
     while True:
         try:
+            mqtt_client = aiomqtt.Client(broker, username=username, password=password)
             async with mqtt_client:
+                if reconnect_attempts > 0:
+                    logging.info("Successfully reconnected to MQTT broker")
                 reconnect_attempts = 0  # Reset on successful connect
                 logging.info(f'Subscribing to {len(topics)} topics, {topics}')
                 for topic in topics:
@@ -94,7 +97,8 @@ async def mqtt_listener(photo_queue, config):
             if reconnect_attempts > max_reconnect_attempts:
                 logging.error("Max reconnect attempts exceeded. Exiting.")
                 break
-            interval = 5  # Seconds
+
+            interval = min(base_interval * (1.5 ** (reconnect_attempts - 1)), 60)
             logging.error(f"Connection lost; Reconnecting in {interval} seconds ... (attempt {reconnect_attempts}/{max_reconnect_attempts})")
             await asyncio.sleep(interval)
 
