@@ -7,6 +7,7 @@ from hashlib import md5
 
 import aiomqtt
 from dotenv import load_dotenv
+from rich.console import Console
 from rich.logging import RichHandler
 from telegram import Bot
 
@@ -91,6 +92,10 @@ async def mqtt_listener(photo_queue, config):
                         caption = f'{detected} {camera}'
                         if camera not in suppressed_cameras:
                             await photo_queue.put((use_channel, message.payload, caption))
+                        else:
+                            logging.info(f'Suppressed camera {camera}')
+                    else:
+                        logging.info(f'No change in {message.topic}')
                     memory[message.topic] = image_hash
         except aiomqtt.MqttError:
             reconnect_attempts += 1
@@ -112,7 +117,8 @@ async def run_all():
     await asyncio.gather(sender_task, listener_task)
 
 def main():
-    logging.basicConfig(level="INFO", format="%(message)s", datefmt="[%X]", handlers=[RichHandler()])
+    console = Console(width=150)
+    logging.basicConfig(level="INFO", format="%(message)s", datefmt="[%X]", handlers=[RichHandler(console=console)])
     try:
         asyncio.run(run_all())
     except KeyboardInterrupt:
