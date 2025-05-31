@@ -20,7 +20,7 @@ def load_config():
     photo_sender_config = {
         'bot_token': config.get('telegram', 'bot_token'),
         'send_to_telegram': os.getenv('SEND_MESSAGES', 'false').lower() == 'true',
-        'photo_send_interval': 1,
+        'photo_send_interval': config.getint('telegram', 'photo_send_interval', fallback=2),
     }
     mqtt_listener_config = {
         'broker': config.get('mqtt', 'broker', fallback='127.0.0.1'),
@@ -35,11 +35,11 @@ def load_config():
     return photo_sender_config, mqtt_listener_config
 
 async def photo_sender(photo_queue, config):
-    logging.info('Starting photo sender')
-
     bot = Bot(token=config['bot_token'])
     send_to_telegram = config['send_to_telegram']
     photo_send_interval = config['photo_send_interval']
+
+    logging.info(f'Starting photo sender, with {send_to_telegram=}, {photo_send_interval=}')
 
     async with bot:
         last_sent = 0
@@ -51,7 +51,9 @@ async def photo_sender(photo_queue, config):
             try:
                 logging.info(f'Sending photo to {channel} {caption}')
                 if send_to_telegram:
-                    await bot.sendPhoto(channel, payload, caption=caption)
+                    message = await bot.send_photo(channel, payload, caption=caption)
+                    # logging.info(message)
+                    logging.info(f'Sent message id {message.message_id} caption: {message.caption}')
             except Exception as ex:
                 logging.error(f"Error sending photo: {ex}")
             last_sent = time.monotonic()
