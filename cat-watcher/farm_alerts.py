@@ -44,20 +44,24 @@ async def photo_sender(photo_queue, config):
     async with bot:
         last_sent = 0
         while True:
-            item = await photo_queue.get()
-            channel, payload, caption = item
-            now = time.monotonic()
-            await asyncio.sleep(max(0, photo_send_interval - (now - last_sent)))
             try:
+                item = await photo_queue.get()
+                channel, payload, caption = item
+                now = time.monotonic()
+                await asyncio.sleep(max(0, photo_send_interval - (now - last_sent)))
                 logging.info(f'Sending photo to {channel} {caption}')
                 if send_to_telegram:
                     message = await bot.send_photo(channel, payload, caption=caption)
                     # logging.info(message)
                     logging.info(f'Sent message id {message.message_id} caption: {message.caption}')
+                last_sent = time.monotonic()
+                photo_queue.task_done()
+            except asyncio.CancelledError:
+                logging.info("Photo sender task cancelled")
+                break
             except Exception as ex:
-                logging.error(f"Error sending photo: {ex}")
-            last_sent = time.monotonic()
-            photo_queue.task_done()
+                logging.error(f"Error in photo sender: {ex}")
+                break
 
 async def mqtt_listener(photo_queue, config):
     logging.info('Starting MQTT listener')
@@ -102,8 +106,7 @@ async def mqtt_listener(photo_queue, config):
         except aiomqtt.MqttError:
             reconnect_attempts += 1
             if reconnect_attempts > max_reconnect_attempts:
-                logging.error("Max reconnect attempts exceeded. Exiting.")
-                break
+                raise Exception("Max reconnect attempts exceeded. Exiting.")
 
             interval = min(base_interval * (1.5 ** (reconnect_attempts - 1)), 60)
             logging.error(f"Connection lost; Reconnecting in {interval} seconds ... (attempt {reconnect_attempts}/{max_reconnect_attempts})")
@@ -116,7 +119,24 @@ async def run_all():
 
     sender_task = asyncio.create_task(photo_sender(photo_queue, photo_sender_config))
     listener_task = asyncio.create_task(mqtt_listener(photo_queue, mqtt_listener_config))
-    await asyncio.gather(sender_task, listener_task)
+    
+    try:
+        done, pending = await asyncio.wait(
+            {sender_task, listener_task},
+            return_when=asyncio.FIRST_COMPLETED
+        )
+        
+        # If either task is done, check if it completed successfully
+        for task in done:
+            if task.exception():
+                logging.error(f"Critical error: {task.exception()}")
+        if pending:  # Cancel any pending tasks
+            for task in pending:
+                task.cancel()
+            await asyncio.gather(*pending, return_exceptions=True)
+    except Exception as e:
+        logging.error(f"Critical error: {e}")
+        raise
 
 def main():
     console = Console(width=150)
