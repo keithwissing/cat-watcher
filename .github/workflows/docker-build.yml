@@ -28,12 +28,9 @@ jobs:
       id: meta
       uses: docker/metadata-action@v5
       with:
-        images: ghcr.io/${{ github.actor }}/cat-watcher
         tags: |
-          type=schedule
-          type=ref,event=branch
-          type=ref,event=pr
-          type=sha
+          ghcr.io/${{ github.actor }}/cat-watcher:${{ github.sha }}
+          ghcr.io/${{ github.actor }}/cat-watcher:${{ github.ref_name }}
 
     - name: Build and push Docker image
       uses: docker/build-push-action@v5
