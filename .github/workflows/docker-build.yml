@@ -28,7 +28,7 @@ jobs:
       id: meta
       uses: docker/metadata-action@v5
       with:
-        images: ghcr.io/${{ github.repository }}
+        images: ghcr.io/${{ github.actor }}/cat-watcher
         tags: |
           type=schedule
           type=ref,event=branch
@@ -42,5 +42,5 @@ jobs:
         push: ${{ github.event_name != 'pull_request' }}
         tags: ${{ steps.meta.outputs.tags }}
         labels: ${{ steps.meta.outputs.labels }}
-        cache-from: type=registry,ref=hitiek/cat-watcher:latest
+        cache-from: type=registry,ref=keithwissing/cat-watcher:latest
         cache-to: type=inline
