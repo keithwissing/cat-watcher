@@ -15,4 +15,4 @@ COPY settings.ini cat_watcher/settings.ini
 
 ENV SEND_MESSAGES True
 
-CMD python3 -m cat_watcher.farm_alerts
+CMD python3 -m cat_watcher.cat_watcher
