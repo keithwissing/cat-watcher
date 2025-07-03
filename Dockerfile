@@ -1,18 +1,26 @@
 FROM python:3.12-slim
 
-RUN pip install pipenv
+WORKDIR /app
 
-ENV PROJECT_DIR /app
+ENV PYTHONPATH=/app \
+    PYTHONUNBUFFERED=1 \
+    SEND_MESSAGES=True
 
-WORKDIR ${PROJECT_DIR}
+RUN useradd -m appuser && chown -R appuser:appuser /app
 
-COPY Pipfile Pipfile.lock ${PROJECT_DIR}/
+COPY Pipfile Pipfile.lock ./
 
-RUN pipenv install --system --deploy
+RUN pip install --no-cache-dir pipenv && \
+    pipenv install --deploy --system
 
 COPY cat_watcher cat_watcher
 COPY settings.ini cat_watcher/settings.ini
 
-ENV SEND_MESSAGES True
+RUN chown -R appuser:appuser /app
 
-CMD python3 -m cat_watcher.cat_watcher
+USER appuser
+
+HEALTHCHECK --interval=30s --timeout=5s --retries=3 \
+    CMD python3 -c "import cat_watcher.cat_watcher"
+
+CMD ["python3", "-m", "cat_watcher.cat_watcher"]
