@@ -15,7 +15,13 @@ def load_config():
     load_dotenv()
     settings = os.getenv('SETTINGS', 'settings.ini')
     config = configparser.ConfigParser()
-    config.read(os.path.join(os.path.dirname(__file__), settings))
+
+    if os.path.isabs(settings):
+        config_filename = settings
+    else:
+        config_filename = os.path.join(os.getcwd(), settings)
+    logging.info(f"Reading config from {config_filename}")
+    config.read(config_filename)
 
     photo_sender_config = {
         'bot_token': config.get('telegram', 'bot_token'),
