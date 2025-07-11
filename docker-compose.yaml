@@ -1,0 +1,7 @@
+services:
+  cat_watcher:
+    image: ghcr.io/keithwissing/cat-watcher:latest
+    container_name: cat_watcher
+    restart: always
+    volumes:
+      - ./settings.ini:/app/settings.ini
