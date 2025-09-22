@@ -23,11 +23,14 @@ def load_config():
     logging.info(f"Reading config from {config_filename}")
     config.read(config_filename)
 
+    # Load Telegram bot configuration
     photo_sender_config = {
         'bot_token': config.get('telegram', 'bot_token'),
         'send_to_telegram': os.getenv('SEND_MESSAGES', 'false').lower() == 'true',
         'photo_send_interval': config.getint('telegram', 'photo_send_interval', fallback=2),
     }
+    
+    # Load MQTT configuration
     mqtt_listener_config = {
         'broker': config.get('mqtt', 'broker', fallback='127.0.0.1'),
         'port': config.getint('mqtt', 'port', fallback=1883),
@@ -35,8 +38,20 @@ def load_config():
         'password': config.get('mqtt', 'password', fallback='mqtt'),
         'topics': [topic.strip().strip("'\"") for topic in config.get('mqtt', 'topics').split(',')],
         'suppressed_cameras': [camera.strip().strip("'\"") for camera in config.get('mqtt', 'suppressed_cameras').split(',')],
-        'use_channel': config.getint('telegram', 'channel'),
     }
+    
+    # Load camera to channel mappings
+    mqtt_listener_config['camera_channels'] = {}
+    for key in config['telegram']:
+        if key.startswith('channel.') and key != 'channel':
+            camera_name = key[8:]  # Remove 'channel.' prefix
+            mqtt_listener_config['camera_channels'][camera_name] = int(config['telegram'][key])
+    
+    # Set default channel if no camera-specific channels are defined
+    if 'channel' in config['telegram'] and not mqtt_listener_config['camera_channels']:
+        mqtt_listener_config['use_channel'] = config.getint('telegram', 'channel')
+    else:
+        mqtt_listener_config['use_channel'] = None
 
     return photo_sender_config, mqtt_listener_config
 
@@ -102,8 +117,14 @@ async def mqtt_listener(photo_queue, config):
                     if message.topic in memory and image_hash != memory[message.topic]:
                         camera, detected = str(message.topic).split('/')[1:3]
                         caption = f'{detected} {camera}'
+                        
                         if camera not in suppressed_cameras:
-                            await photo_queue.put((use_channel, message.payload, caption))
+                            # Use camera-specific channel if available, otherwise use default channel
+                            target_channel = config['camera_channels'].get(camera, config['use_channel'])
+                            if target_channel is not None:
+                                await photo_queue.put((target_channel, message.payload, caption))
+                            else:
+                                logging.warning(f'No channel configured for camera {camera}')
                         else:
                             logging.info(f'Suppressed camera {camera}')
                     else:
