@@ -47,8 +47,8 @@ def load_config():
             camera_name = key[8:]  # Remove 'channel.' prefix
             mqtt_listener_config['camera_channels'][camera_name] = int(config['telegram'][key])
     
-    # Set default channel if no camera-specific channels are defined
-    if 'channel' in config['telegram'] and not mqtt_listener_config['camera_channels']:
+    # Set default channel
+    if 'channel' in config['telegram']:
         mqtt_listener_config['use_channel'] = config.getint('telegram', 'channel')
     else:
         mqtt_listener_config['use_channel'] = None
