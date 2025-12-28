@@ -2,6 +2,22 @@
 
 A Dockerized application for watching MQTT topics for cat photos, potentually published by frigate, and sending them to Telegram.
 
+### Development
+
+This project uses [uv](https://github.com/astral-sh/uv) for dependency management.
+
+To install dependencies and set up a virtual environment:
+
+```bash
+uv sync
+```
+
+To run the application locally:
+
+```bash
+uv run python -m cat_watcher.cat_watcher
+```
+
 ### Settings Configuration
 
 The application uses a `settings.ini` file for configuration. Here's an example configuration:
