@@ -116,11 +116,13 @@ async def mqtt_listener(photo_queue, config):
                     logging.info(f'{str(message.topic):<34} :  {message.payload[6:10]} {image_hash}')
                     if message.topic in memory and image_hash != memory[message.topic]:
                         camera, detected = str(message.topic).split('/')[1:3]
-                        caption = f'{detected} {camera}'
-                        
+                        ini_camera_name = camera.replace(' ', '_').lower()
+                        caption_camera_name = camera.replace('_', ' ')
+                        caption = f'{detected} {caption_camera_name}'
+
                         if camera not in suppressed_cameras:
                             # Use camera-specific channel if available, otherwise use default channel
-                            target_channel = config['camera_channels'].get(camera, config['use_channel'])
+                            target_channel = config['camera_channels'].get(ini_camera_name, config['use_channel'])
                             if target_channel is not None:
                                 await photo_queue.put((target_channel, message.payload, caption))
                             else:
