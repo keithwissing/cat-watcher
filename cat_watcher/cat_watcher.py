@@ -170,6 +170,8 @@ async def run_all():
 def main():
     console = Console(width=150)
     logging.basicConfig(level="INFO", format="%(message)s", datefmt="[%X]", handlers=[RichHandler(console=console)])
+    # httpx logs request URLs at INFO, and Telegram API URLs contain the bot token
+    logging.getLogger('httpx').setLevel(logging.WARNING)
     try:
         asyncio.run(run_all())
     except KeyboardInterrupt:
